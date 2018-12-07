@@ -18,7 +18,7 @@ def file_op(file):
 class Server1:
     
     def __init__(self,port,filename):
-        file = open('next.ini','w')
+        self.file = open('next.ini','w')
         self.config = cp.ConfigParser(allow_no_value=True)
         self.set_file()
         self.ip_address = self.get_info('node','ip_adress')
@@ -93,7 +93,27 @@ class Server1:
         
         
             
+class File:
+    def __init__(self, filename): #addsection before add key
+        self.filename = filename
+        self.config = cp.ConfigParser(allow_no_value=True)
+        self.file = open(self.filename,'w')
+        self.file.close()
+        
+    def addSection(self,section):
+        self.config.add_section(section)
+        with open(self.filename,'w') as f:
+            self.config.write(f)
+            
+    def getKey(self, section, key):
+        self.config.read(self.filename)
+        return self.config.get(section,key)
 
+    def addKey(self, section, key, value =None):
+        self.config.set(section,key,value)
+        with open(self.filename,'w') as f:
+            self.config.write(f)
+        
 s = Server1(5000,'con.ini')
 #s.launch_connection()
 """class TCPHandler(ss.BaseRequestHandler):
