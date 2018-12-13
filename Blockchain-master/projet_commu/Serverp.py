@@ -11,20 +11,21 @@ import hashlib as hl
 import _thread as td
 import socketserver as ss
 import configparser as cp
-import pickle
+def file_op(file):
+    return open(file,'w')
+    
+
 class Server1:
     
-    def __init__(self):
-        self.file = File('server.ini')
-        #print(self.file.getKey('node','ip_address'))
-        self.ip_address = self.file.getKey('node','ip_address')
-        self.port = 5001
+    def __init__(self,port,filename):
+        self.file = open('next.ini','w')
+        self.config = cp.ConfigParser(allow_no_value=True)
+        self.set_file()
+        self.ip_address = self.get_info('node','ip_adress')
+        self.port = port
         self.serverSocket = so.socket(so.AF_INET,so.SOCK_STREAM)
-        self.serverSocket.bind((self.ip_address,self.port))
-        self.serverSocket.listen(10)
-        self.list_client = []
-           
-        
+        self.serverSocket.bind((self.ip_address,port))
+        self.serverSocket.listen(6)
         self.identifier = {'alice':'ecila','jb':'bj'}
         #on met les identifiant ici???
         
@@ -32,17 +33,16 @@ class Server1:
         #tcp_serv = ss.TCPServer((self.ip_address,self.port),TCPHandler)
         while 1:
             self.connectionSocket, self.addr = self.serverSocket.accept()
-            a = td.start_new_thread(self.handle_message_client,())
-          
-    def handle_message_client(self):
+            td.start_new_thread(self.handle_message_client,(self.connectionSocket,))
+        
+    def handle_message_client(self,conn):
         while 1:
             conn = self.connectionSocket
             conn.sendall('entre user and psw'.encode('utf-8'))
             use_psw = conn.recv(1024)
-            #pwc = use_psw.decode('utf-8')
             #print(len(str(use_psw.decode('utf-8'))))
             user_id = use_psw.split()#list of string
-            #print(user_id[0].decode('utf-8'))
+            print(user_id[0].decode('utf-8'))
             #psw = use_psw.split() #string
             
             if self.user_is_present(user_id[0].decode('utf-8'),user_id[1].decode('utf-8'),conn)==True:
@@ -51,24 +51,22 @@ class Server1:
                 
                 hash_nonce = hl.sha256((nonce +user_id[1].decode('utf-8')).encode('utf-8')).hexdigest() #string
                 hashed_nonce = conn.recv(1024)
-                if hash_nonce ==hashed_nonce.decode('utf-8'): #0 success 1 error
-                    conn.sendall('0'.encode('utf-8'))
-                    self.file.addKey('neighbour',self.addr[0])
-                    clients = pickle.dumps(self.file.getListSection('neighbour'))
-
+                print(hashed_nonce.decode('utf-8'))
+                print(hash_nonce)
+                if hash_nonce ==hashed_nonce.decode('utf-8'):
+                    conn.sendall('success u in tha server'.encode('utf-8'))
                     
-                    conn.sendall(clients)
-                    conn.recv(1024)  
                     
                     break;
-                else: #failed to hash
-                    conn.sendall('1'.encode('utf-8'))
+                else:
+                    conn.sendall('error u out tha server'.encode('utf-8'))
                     break;
                 
-            else: #user is not present
+            else:
                 break;
-        #conn.close()
-
+        conn.close()
+            
+        
             
     def user_is_present(self,user,psw,conn):
         is_present = False
@@ -82,35 +80,41 @@ class Server1:
             data = 'wrong user name'
             conn.sendall(data)
         return is_present
+    
+    def set_file(self):
+        self.config['node'] = {}
+        self.config['neighbour'] = {}
+        self.config.write(self.file)
+            
+    def get_info(self,section,key):
+        self.config.read(self.file)
+        return self.config.get(section,key)
         
         
-
+        
+            
 class File:
     def __init__(self, filename): #addsection before add key
         self.filename = filename
         self.config = cp.ConfigParser(allow_no_value=True)
-        self.file = open(self.filename,'r+')
+        self.file = open(self.filename,'w')
         self.file.close()
         
-    def addSection(self,section): #§ don't use
+    def addSection(self,section):
         self.config.add_section(section)
-        with open(self.filename,'r+') as f:
+        with open(self.filename,'w') as f:
             self.config.write(f)
             
     def getKey(self, section, key):
         self.config.read(self.filename)
         return self.config.get(section,key)
-    def getListSection(self,section):
-        self.config.read(self.filename)
-        return list(self.config[section].keys())
-    
 
     def addKey(self, section, key, value =None):
         self.config.set(section,key,value)
-        with open(self.filename,'r+') as f:
-            self.config.write(f)        
-
-#s = Server1()
+        with open(self.filename,'w') as f:
+            self.config.write(f)
+        
+s = Server1(5000,'con.ini')
 #s.launch_connection()
 """class TCPHandler(ss.BaseRequestHandler):
     def handle(self):

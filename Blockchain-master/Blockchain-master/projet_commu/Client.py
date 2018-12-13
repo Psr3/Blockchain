@@ -7,6 +7,9 @@ Created on Thu Nov 29 21:02:22 2018
 import socket as so
 import hashlib as hl
 import datetime as dt
+import threading as td
+import select
+import time
 import pickle
 import Server as sv#file correspond to module :(
 class Client1:
@@ -19,6 +22,7 @@ class Client1:
         #self.port_c= port_c
         self.clientSocket = so.socket(so.AF_INET, so.SOCK_STREAM)
         #self.clientSocket.bind((ip_c,port_c))automatic
+        self.a = []
         self.chain = BlockChain()
         self.isActiv = False
         
@@ -38,45 +42,66 @@ class Client1:
         statut = self.clientSocket.recv(1024).decode('utf-8')
         if statut =='0':#connection sucess
             self.isActiv = True
-            clients = self.clientSocket.recv(1024)
+            """clients = self.clientSocket.recv(1024)
             clients = pickle.loads(clients)
-            print(clients)
+            print(clients)"""
             
         else:
             res = False
-        #self.clientSocket.close() move up
+    def getIsActiv(self):
+        return self.isActiv
 
-    def isActiv(self):#not in use
-        car = input('quit or stay:')
-        activ = True
-        if car=='quit':
-            activ = False
-            self.clientSocket.send('quit'.encode())
-            self.clientSocket.close()
-        else:
-            activ = True
-        return activ
-
-    def transfert(self): #transfert money
-        if self.isActiv == True:
+    def transfert(self): #transfert money #in use GOTTA CHANGE THIS
+        global lock
+        lock = td.Lock()
+        if self.isActiv == True: #STUCK HERE
             while True:
+                recv = td.Thread(name='receving thread',target=self.recvAddr, args=(self.clientSocket,))
                 car = input('type out or set amount you to transfert (you can set index pos'+'\nbut you risk to invalided the chain) :')
                 if car == 'out':
-                    self.clientSocket.send('out'.encode()) 
+                    self.clientSocket.send(('out ' +self.ip_c).encode()) #???
+                    self.isActiv = False
+                    
                     self.clientSocket.close()
                     break
                 else:
-                    #print(car[0])
-                    #print(car[1])
-                    print (len(car))
-                    self.chain.addBlock(car[0], int(car[2]))
-                    print (self.chain)
+                    
+                    amount,index = car.split()
+                    trans = td.Thread(name='chain thread',target=self.createChain, args=(amount,int(index)))
+                    recv.start()
+                    trans.start()
+                    """recv.join()
+                    trans.join()"""
+                    """ad = self.clientSocket.recv(1024)
+                    amount,index = car.split()
+                    self.chain.addBlock(amount, index)
+                    print (ad)"""
         else:
-            print('regist to server befor add money')
+            print('regist to server befor add')
+    def recvAddr(self,conn):
+        global lock
+        """time.sleep(3)
+        r, _, _ = select.select([conn], [], [])
+        if r:
+            data = conn.recv(1024)
+            print(data)"""
+        
+        try:
+            a = conn.recv(1024).decode()
+            self.file.addKey('neighbour',a)
+            notif_out = a.split()
+            if notif_out[0] == 'out':
+                print(notif_out[0],notif_out[1])
+                self.file.deleteKey('neighbour',notif_out[1])
+                
+        except ConnectionAbortedError as e:
+            print ('EEEEEEEEEEEEEEEEEEEEEEE')
+            raise
+        
 
-
-
-    
+    def createChain(self,somme,index):
+        self.chain.addBlock(somme,index)
+	
             
 class Block: #str et repr just for print the object
     def __init__(self):
@@ -129,7 +154,7 @@ class BlockChain: #for the genesis block we decided for the previous hash
                 block.setData(data)
                 block.setHash()
                 self.chain.append(block)
-            else: #add at that index and +1 for the other
+            else: #add at that index and do +1 for the other
                 block.setPrevHash(self.chain[index-1].getHash())
                 block.setIndex(index)
                 block.setData(data)
@@ -144,12 +169,10 @@ class BlockChain: #for the genesis block we decided for the previous hash
     def chainIsValid(self):
         res = True
         for i in range(1,len(self.chain)):
-            print(i)
             print(self.chain[i].getPrevHash())
             print(self.chain[i-1].getHash())
             if self.chain[i].getPrevHash() != self.chain[i-1].getHash():
                 res = False
-                print(i)
                 return res
             else:
                 res = True
