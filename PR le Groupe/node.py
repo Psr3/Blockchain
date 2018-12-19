@@ -13,10 +13,10 @@ import select
 import time
 import dill as pk
 import Server as sv#file correspond to module :(
-class Client1:
-    #logout msg is out
+class Client:
     def __init__(self):
         self.file = sv.File('client.ini')
+                   
         self.file.addSection('neighbour')
         self.user = self.file.getKey('node','username')
         self.psw = self.file.getKey('registration','secret')
@@ -54,23 +54,6 @@ class Client1:
         recv_blo.start()
         #self.recvBlock()
 
-    """def sender(self,data,conn): #expecting byte 
-        maxi = 1024
-        l = len(data)
-        conn.sendall(data)
-        if l<=maxi:
-            conn.sendall(data)
-            conn.sendall(self.end_send)
-        else:
-            while i<l:
-                a = i+1023
-                if a>=l:
-                    a = 48385
-		
-	else:
-		
-	    print(i,a)
-	i = i+1024"""
 
     def recver(self,conn):
         leng = conn.recv(1024)
@@ -96,7 +79,7 @@ class Client1:
         self.out = not(val)
         
     def broadCast(self): # send when cliq submit
-        if self.isActiv ==True: #thread dans init???
+        if self.isActiv ==True: 
             #with lock???
             if self.file.getListSection('neighbour')!=0: #PAS SEUL
                 blc = self.chain.getLastBlock()
@@ -136,10 +119,8 @@ class Client1:
                     self.chain = pk.loads(chain)
                     recvchain = True
                     self.hasRecv =True
-                    print('FIRST',self.chain)
                 else: #s'il est seul ==>create chain
                     self.chain = BlockChain()
-                    print('NULLL')
                     self.hasRecv =True
                     recvchain= True
         self.lock.release()
@@ -165,8 +146,7 @@ class Client1:
             
         else:
             bloc = pk.loads(bloc_p)
-            self.chain.addBlock(blc=bloc)
-            print('ELLLL',self.chain)
+            self.chain.addrecvBlock(bloc)
             self.sockChain.close()
             
         
@@ -222,7 +202,7 @@ class Client1:
                                 if notif_out[0]!='out' and notif_out[0]!=self.ip_c:
                                     self.file.addKey('neighbour',notif_out[0])
                     except IndexError:
-                        print('INDEX ERROR')
+                        pass
                 except KeyError:
                     print('KEYYYY')
                 try:    
@@ -231,18 +211,16 @@ class Client1:
                         print(notif_out[1])
                         self.file.deleteKey('neighbour',notif_out[1])
                 except IndexError:
-                    print('EUUU')
+                    pass
                 self.lock.release()
     def getChain(self):
         return self.chain
             
 class Block: #str et repr just for print the object
     def __init__(self):
-        """self.id = str(index)
-        self.data = str(data) + '$'"""
+        
         self.tim = str(dt.datetime.now().year) + str(dt.datetime.now().month) + str(dt.datetime.now().day) + str(dt.datetime.now().hour)+str(dt.datetime.now().minute)+str(dt.datetime.now().second)
-        """self.prevHash =prevHash
-        self.setHash()"""
+
     def __repr__(self):
         return 'id = {}, amount = {}, time = {}, hash = {}, prevHash = {} {}'.format(str(self.id),self.data,self.tim,self.hash,self.prevHash,'-------')
     def getPrevHash(self):
@@ -253,10 +231,11 @@ class Block: #str et repr just for print the object
         return str(self.data)
     def getIndex(self):
         return str(self.id)
+    def getTime(self):
+        return self.tim
     def setHash(self):
         
         self.hash = hl.sha256((self.id+self.data+self.tim).encode('utf-8')).hexdigest()
-    
     def setPrevHash(self,prev):
         self.prevHash = str(prev)
     def setIndex(self,a):
@@ -286,6 +265,9 @@ class BlockChain: #for the genesis block we decided for the previous hash
                 block.setIndex(len(self.chain))
                 block.setHash()
                 self.chain.append(block)
+
+    def addrecvBlock(self,blc):
+        self.chain.append(blc)
         
     def getLastBlock(self):
         return self.chain[-1]
@@ -294,8 +276,6 @@ class BlockChain: #for the genesis block we decided for the previous hash
     def chainIsValid(self):
         res = True
         for i in range(1,len(self.chain)):
-            print(self.chain[i].getPrevHash())
-            print(self.chain[i-1].getHash())
             if self.chain[i].getPrevHash() != self.chain[i-1].getHash():
                 res = False
                 return res
@@ -303,50 +283,55 @@ class BlockChain: #for the genesis block we decided for the previous hash
                 res = True
         return res
 
-
+    def getBlock(self,i):
+        return self.chain[i]
 
 from tkinter import *
 
 
-class Graph:
+class Window:
     def __init__(self):
-        self.client = Client1()
+        self.client = Client()
         
         self.window = Tk()
         self.window.title("BlockChain")
 
+
+
+                       
+        self.window.columnconfigure(5, weight=2)         
+        
+
         
         # Create labels
         self.enter = StringVar()
-        Label(self.window, text = "Provide Amount And index",textvariable = self.enter).grid(sticky =  N,columnspan = 3)
-        Label(self.window, text = "Amount").grid(row = 1, column = 0, sticky =  E)
-        #Label(self.window, text = "Index").grid(row = 1, column = 2, sticky =  E)
+        Label(self.window, textvariable = self.enter).grid(sticky =  N,columnspan = 3)
+        Label(self.window, text = "Amount").grid(row = 1, column =5,padx= 5,pady=5, sticky =  W+ E)
         self.valid =  StringVar()
-        Label(self.window, textvariable = self.valid).grid(row = 5, column = 2, sticky =  W+ E)
-        self.look =  StringVar()
+        Label(self.window, textvariable = self.valid).grid(row = 5, column = 2,padx= 5,pady=5, sticky =  W+ E)
+        """self.look =  StringVar()
         Label(self.window, textvariable = self.look).grid(row = 5, column = 1, sticky =  W)
-        Label(self.window, text = 'Type out to leave').grid(row = 6, column = 1, sticky =  W+E)
+        Label(self.window, text = 'Type out to leave').grid(row = 6, column = 1, sticky =  W+E)"""
         # Create entries
         self.amount =  StringVar()
-        Entry(self.window, textvariable = self.amount, justify = RIGHT).grid(row = 2, column = 0)
+        Entry(self.window, textvariable = self.amount, justify = RIGHT).grid(row = 2, column = 5)
     
         
-        #self.index =  StringVar()
-        #Entry(self.window, textvariable = self.index, justify = RIGHT).grid(row = 2, column = 2)
+       
 
         #button
-        Button(self.window, text = 'Submit', command = self.Submit).grid(row = 3,column = 1,sticky=  W+ E)
+        Button(self.window, text = 'Submit', command = self.Submit).grid(row = 3,column = 5, padx= 5,pady=5, sticky=  W+ E)
 
-        Button(self.window, text = "Chain Valid ?", command = self.validate).grid(row = 4, column = 1,sticky = W+ E)
-        Button(self.window, text = "See the chain", command = self.see).grid(row = 6, column = 1,sticky = W+ E+S+N)
-        Button(self.window, text = 'Clique to logout', command = self.destroy).grid(row = 7,column = 1,sticky=  W+ E)
+        Button(self.window, text = "Chain Valid ?", command = self.validate).grid(row = 4, column = 5, padx= 5,pady=5, sticky = W+ E)
+        Button(self.window, text = "See the chain", command = self.see).grid(row = 6, column = 5, padx= 5,pady=5, sticky = W+ E+S+N)
+        Button(self.window, text = 'Clique to logout', command = self.destroy).grid(row = 7,column = 5, padx= 5,pady=5, sticky=  W+ E)
         self.exit = StringVar()
 
-        #---------------
-        #self.canvas = Canvas(self.window, width=600, height=600).grid(row = 8,column = 1,columnspan = 2,rowspan = 2,sticky=  W+E)
-        #-------
-        
+       
+        time.sleep(2) #wait for the thread to creat chain
+        self.chain = self.client.getChain()
         self.window.protocol("WM_DELETE_WINDOW",self.destroy)
+        self.window.geometry('600x600')
         self.window.mainloop()
 
     def Submit(self):
@@ -355,39 +340,44 @@ class Graph:
             self.enter.set('PROVIDE AMOUNT')
         else:
             self.enter.set('YOU had ' + mon +'$' +' in the chain')
-            self.chain = self.client.getChain()
+            ##self.chain = self.client.getChain() I MOVE THIS UP
 
             self.chain.addBlock(blc = mon)
             self.client.broadCast()
         
    
     def validate(self):
-        self.chain = self.client.getChain()
+        #self.chain = self.client.getChain()
         if self.chain.chainIsValid()==True:
-            self.valid.set('CHAINE TRUE')
+            self.valid.set('CHAIN IS VALID')
         else:
-            self.valid.set('CHAINE FALSE')
+            self.valid.set('CHAIN IS NOT VALID')
     def see(self): #FUNCTION TO DISPLAY WHAT's NEED TO BE SEE
+        scroll = Scrollbar(self.window)
+        scroll.grid(row = 8,column = 9,sticky = N+S+E+W)
         
-        self.look.set('a')
+        txt = Text(self.window,height = 9, width = 30)
+
+        
+        txt.grid(row = 8,columnspan = 8,sticky=W+ E+S+N)
+        scroll.config(command=txt.yview)
+        txt.config(yscrollcommand=scroll.set,relief = RAISED)
+        for i in range(self.chain.getSizeChain()):
+            bl = self.chain.getBlock(i)
+            q = ('BLOC{} ==> id = '+str(bl.getIndex()) +',' +  ' data = ' + str(bl.getData()) +
+                 ',' + 'timestamp =  '+ str(bl.getTime())+ ',' +' hash = ' +str(bl.getHash()) +',' +'prevHas ='+ str(bl.getPrevHash())+ '----\n').format(i)
+                                            
+            txt.insert(END,q)
+        txt.config(state = 'disable')
     def destroy(self):
         try:
             self.client.closeAll(True)
             self.window.destroy()
         except:
               pass
-l = Graph()
+            
 
-"""b= BlockChain()
-b.addBlock(5)
-b.addBlock(6)
-b.addBlock(9)
-b.addBlock(3,)
-print(b)"""
-"""
-#b.chainIsValid()
-print (b.chainIsValid())"""
-"""c = Client1()
-c.reg_to_server()
-c.transfert()"""
+
+if __name__ == '__main__':
+    Window()
 

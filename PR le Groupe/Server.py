@@ -13,11 +13,10 @@ import socketserver as ss
 import configparser as cp
 import pickle
 import select
-class Server1:
+class Server:
 
     def __init__(self):
         self.file = File('server.ini')
-        #print(self.file.getKey('node','ip_sel.address'))
         self.ip_address = self.file.getKey('node','ip_address')
         self.port = 5001
         self.serverSocket = so.socket(so.AF_INET,so.SOCK_STREAM)
@@ -27,13 +26,12 @@ class Server1:
         self.list_client = []
         self.list_connect = {}
         self.ad = []
-        #self.list_connect.append(self.serverSocket) #problรจme car devient vide aprรจs
 
 
-        self.identifier = {'alice':'ecila','jb':'bj','sam':'mas'}
+        self.identifier = {'alice':'ecila','jb':'bj','sam':'mas', 'kayak':'kayak', 'bob':'bob'}
         #on met les identifiant ici???
 
-    def c(self): #launch TCP server
+    def connect(self): #launch TCP server
         #tcp_serv = ss.TCPServer((self.ip_address,self.port),TCPHandler)
         while 1:
             self.connectionSocket, self.addr = self.serverSocket.accept()
@@ -69,16 +67,7 @@ class Server1:
                     #self.list_connect.append(self.connectionSocket)
                     self.list_connect[self.addr[0]] = self.connectionSocket
                     tail = len(self.list_connect.keys())
-                    """if tail!=0:
-                        for ipd, sock in self.list_connect.items():
-                            
-                           if sock is not self.connectionSocket:
-                               sock.sendall(self.addr[0].encode())
-                               print('a',self.addr[0],sock)
-                               print(sock is self.connectionSocket )
-                            else:
-                                for ip in self.list_connect.keys():
-                                    pass"""
+                    
                     if tail!=1 and tail !=0: #at least 2 clients
                         for ipd, sock in self.list_connect.items():
                             if sock is not self.connectionSocket: # send newly arrived IP to everyone
@@ -101,7 +90,7 @@ class Server1:
                         for ipd, sock in self.list_connect.items():
                             sock.sendall(out_clients)
                         print('bye '+out_message[1])
-                        #conn.close()
+                        conn.close()
                         break
 
                 else: #failed to hash
@@ -110,10 +99,6 @@ class Server1:
 
             else: #user is not present
                 break;
-        #conn.close()
-
-    #def shareClients(self,conn):
-
 
     def user_is_present(self,user,psw,conn):
         is_present = False
@@ -136,7 +121,7 @@ class File:
         self.file = open(self.filename,'r+')
         self.file.close()
 
-    def addSection(self,section): #u don't use
+    def addSection(self,section): 
         self.config.add_section(section)
         with open(self.filename,'a') as f:
             self.config.write(f)
@@ -144,7 +129,7 @@ class File:
     def getKey(self, section, key):
         self.config.read(self.filename)
         return self.config.get(section,key)
-    def getListSection(self,section):s
+    def getListSection(self,section):
         self.config.read(self.filename)
         try:
             l = list(self.config[section].keys())
@@ -177,32 +162,13 @@ class File:
             f.seek(0)
             self.config.write(f)
             f.truncate()
+    def section(self):
+        self.config.read(self.filename)
+        ls = self.config.sections()
+        return ls
 
-s = Server1()
-s.c()
-"""class TCPHandler(ss.BaseRequestHandler):
-    def handle(self):
-        # self.request is the TCP socket connected to the client
-        self.data = self.request.recv(1024)
 
-        # just send back the same data, but upper-cased
-        self.request.sendall(self.data.upper())"""
-
-"""while True:
-                        #read_socs, write_socs, err_socs = select.select(self.list_connect,[],[])
-                        #out_message = conn.recv(1024).decode('utf-8')
-                        for i in range(1,len(self.list_connect)):
-                            if (self.list_connect[i] is not conn):# or (sock is not self.serverSocket):
-                                self.list_connect[i].sendall(self.addr[0].encode('utf-8'))
-                            else:
-                                out_message = self.list_connect[i].recv(1024).decode('utf-8')
-                                if out_message:
-                                    if out_message == 'out':
-                                        print(self.list_connect)
-                                        self.list_connect[i].close()
-                                        self.list_connect.remove(self.list_connect[i])
-                                        print(self.list_connect)
-                                        break
-                                    else:
-                                        pass
-                    #conn.sendall(clients)"""
+if __name__ == '__main__' :
+    print('SERVER HAVE BEEN LAUNCH')
+    s = Server()
+    s.connect()
