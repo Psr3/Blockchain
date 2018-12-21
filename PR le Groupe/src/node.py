@@ -155,7 +155,10 @@ class Client:
             self.sockChain.close()
             
         
-   
+    def asking_chain(self):
+        self.hasRecv = False
+
+    
     def reg_to_server(self):
         ip_s = self.file.getKey('registration','ip_address')
         port_s = 5001
@@ -348,7 +351,11 @@ class Window:
         else:
             self.enter.set('YOU had ' + mon +'$' +' in the chain')
             self.chain.addBlock(blc = mon)
-            self.client.broadCast()
+            if self.chain.chainIsValid()==True:
+                self.client.broadCast()
+            else:
+                self.enter.set('YOU Have an invalid block')
+                self.client.asking_chain() #reasking the chain to 
         
    
     def validate(self):
@@ -384,4 +391,3 @@ class Window:
 
 if __name__ == '__main__':
     Window()
-
